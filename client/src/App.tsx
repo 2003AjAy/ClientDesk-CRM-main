@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 import { Dashboard } from './pages/Dashboard';
 import { ProjectDetail } from './pages/ProjectDetails';
+import SentimentDashboard from './pages/SentimentDashboard';
 import Login from './pages/Login';
 import Unauthorized from './pages/Unauthorized';
 
@@ -41,6 +42,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <ProjectDetail />
+                  </PrivateRoute>
+                } 
+              />
+              <Route 
+                path="/sentiment/:projectId" 
+                element={
+                  <PrivateRoute>
+                    <SentimentDashboard />
                   </PrivateRoute>
                 } 
               />

@@ -4,6 +4,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { ProgressBar } from '../components/progressBar';
 import { ProjectTimeline } from '../components/ProjectTimeline';
 import { ProjectNotes } from '../components/ProjectNotes';
+import RelationshipHealthCard from '../components/RelationshipHealthCard';
 import { 
   fetchProjectById, 
   fetchProjectNotes, 
@@ -13,7 +14,7 @@ import {
   updateProjectTimelineItem,
   updateProjectStatus
 } from '../utils/api';
-import { ArrowLeft, User, Mail, Phone, Calendar, FileText, Settings, Briefcase, Star } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Calendar, FileText, Settings, Briefcase, Star, TrendingUp } from 'lucide-react';
 import { ProjectNote, ProjectTimelineItem } from '../types/Project';
 
 export const ProjectDetail: React.FC = () => {
@@ -223,6 +224,22 @@ export const ProjectDetail: React.FC = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Relationship Health */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+              <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-gray-100">
+                <div className="flex items-center">
+                  <TrendingUp className="h-5 w-5 text-blue-600 mr-3" />
+                  <h2 className="text-xl font-bold text-gray-900">Client Relationship Health</h2>
+                </div>
+              </div>
+              <div className="px-6 py-8">
+                <RelationshipHealthCard 
+                  projectId={id || ''} 
+                  clientName={project?.clientName || 'Unknown Client'} 
+                />
               </div>
             </div>
 

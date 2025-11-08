@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Project } from '../types/Project';
 import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from './progressBar';
-import { Calendar, Mail, Phone, User, ArrowRight } from 'lucide-react';
+import { Calendar, Mail, Phone, User, ArrowRight, Smile, Meh, Frown, Brain } from 'lucide-react';
+import { sentimentApi } from '../utils/sentimentApi';
+import { ProjectSentiment } from '../types/Sentiment';
 
 interface ProjectTableProps {
   projects: Project[];
@@ -11,6 +13,35 @@ interface ProjectTableProps {
 
 export const ProjectTable: React.FC<ProjectTableProps> = ({ projects }) => {
   const navigate = useNavigate();
+  const [sentimentData, setSentimentData] = useState<Record<string, ProjectSentiment>>({});
+
+  useEffect(() => {
+    const fetchSentimentData = async () => {
+      const sentimentPromises = projects.map(async (project) => {
+        try {
+          const data = await sentimentApi.getProjectSentiment(project.id);
+          return { projectId: project.id, data };
+        } catch (error) {
+          return { projectId: project.id, data: null };
+        }
+      });
+
+      const results = await Promise.all(sentimentPromises);
+      const sentimentMap: Record<string, ProjectSentiment> = {};
+      
+      results.forEach(({ projectId, data }) => {
+        if (data) {
+          sentimentMap[projectId] = data;
+        }
+      });
+
+      setSentimentData(sentimentMap);
+    };
+
+    if (projects.length > 0) {
+      fetchSentimentData();
+    }
+  }, [projects]);
 
   const handleRowClick = (projectId: string) => {
     navigate(`/project/${projectId}`);
@@ -22,6 +53,37 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects }) => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const getSentimentIcon = (label: string) => {
+    switch (label) {
+      case 'positive':
+        return <Smile className="w-4 h-4 text-green-600" />;
+      case 'neutral':
+        return <Meh className="w-4 h-4 text-yellow-600" />;
+      case 'negative':
+        return <Frown className="w-4 h-4 text-red-600" />;
+      default:
+        return <Meh className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const getSentimentColor = (label: string) => {
+    switch (label) {
+      case 'positive':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'neutral':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'negative':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const handleSentimentClick = (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation(); // Prevent row click
+    navigate(`/sentiment/${projectId}`);
   };
 
   return (
@@ -41,6 +103,9 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects }) => {
               </th>
               <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                 Date
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                Sentiment
               </th>
               <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                 Action
@@ -85,6 +150,25 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects }) => {
                     <Calendar className="h-4 w-4 mr-2 text-gray-400" />
                     {formatDate(project.createdAt)}
                   </div>
+                </td>
+                <td className="px-6 py-5 whitespace-nowrap">
+                  {sentimentData[project.id] ? (
+                    <button
+                      onClick={(e) => handleSentimentClick(e, project.id)}
+                      className="flex items-center space-x-2 px-3 py-1 rounded-full border hover:shadow-sm transition-all duration-200 group/sentiment"
+                    >
+                      {getSentimentIcon(sentimentData[project.id].sentimentLabel)}
+                      <span className={`text-xs font-medium border ${getSentimentColor(sentimentData[project.id].sentimentLabel)} px-2 py-1 rounded-full`}>
+                        {sentimentData[project.id].sentimentLabel}
+                      </span>
+                      <Brain className="w-3 h-3 text-gray-400 group-hover/sentiment:text-blue-600 transition-colors" />
+                    </button>
+                  ) : (
+                    <div className="flex items-center space-x-2 text-gray-400">
+                      <Meh className="w-4 h-4" />
+                      <span className="text-xs">No data</span>
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-5 whitespace-nowrap">
                   <div className="flex items-center text-blue-600 group-hover:text-blue-700">
