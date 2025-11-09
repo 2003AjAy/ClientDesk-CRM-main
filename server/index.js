@@ -70,29 +70,37 @@ app.get('/api/projects/assigned/:developerId', async (req, res) => {
     const result = await pool.query(
       `SELECT * FROM inquiries 
        WHERE id = ANY($1::int[]) 
-       ORDER BY created_at DESC`,
+       ORDER BY date DESC`,
       [projectIds]
     );
-    
-    // Get timeline data for all projects to calculate progress
+
+    // Normalize shape to match /api/projects
     const projects = await Promise.all(result.rows.map(async (row) => {
       const timelineResult = await pool.query(
         'SELECT * FROM project_timeline WHERE project_id = $1',
         [row.id]
       );
-      
+
       const timelineItems = timelineResult.rows;
       const totalTasks = timelineItems.length;
       const completedTasks = timelineItems.filter(item => item.status === 'completed').length;
       const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-      
+
       return {
-        ...row,
+        id: row.id.toString(),
+        clientName: row.name,
+        email: row.email,
+        phone: row.phone,
+        projectType: row.project_type,
+        requirements: row.requirements,
+        status: row.status || 'Pending',
+        createdAt: row.date,
         progress,
-        timeline: timelineItems
+        timeline: timelineItems,
+        notes: [],
       };
     }));
-    
+
     res.json(projects);
   } catch (error) {
     console.error('Error fetching assigned projects:', error);
