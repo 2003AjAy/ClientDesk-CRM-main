@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface StatusBadgeProps {
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Cancelled';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Cancelled' | 'Not Started';
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -34,6 +34,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
 
   const getStatusIcon = () => {
     switch (status) {
+      case 'Not Started':
+        return '📋';
       case 'Pending':
         return '⏳';
       case 'In Progress':

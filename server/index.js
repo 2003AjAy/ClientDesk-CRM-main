@@ -7,11 +7,18 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const pool = require('./db');
+const developersRouter = require('./routes/developers');
+const usersRouter = require('./routes/users');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 app.use(cors());
 app.use(express.json());
+
+
+// API Routes
+app.use('/api/developers', developersRouter);
+app.use('/api/users', usersRouter);
 
 // Placeholder endpoint for form submissions
 app.post('/api/submit', async (req, res) => {
@@ -25,6 +32,71 @@ app.post('/api/submit', async (req, res) => {
   } catch (error) {
     console.error('Error saving inquiry:', error);
     res.status(500).json({ message: 'Failed to submit inquiry' });
+  }
+});
+
+// Fetch projects assigned to a specific developer
+app.get('/api/projects/assigned/:developerId', async (req, res) => {
+  const { developerId } = req.params;
+  
+  try {
+    // First, check if the project_assignments table exists
+    const tableExists = await pool.query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'project_assignments'
+      )`
+    );
+
+    if (!tableExists.rows[0].exists) {
+      console.warn('project_assignments table does not exist. Returning empty array.');
+      return res.json([]);
+    }
+
+    // Get all project IDs assigned to this developer
+    const assignmentsResult = await pool.query(
+      'SELECT project_id FROM project_assignments WHERE developer_id = $1',
+      [developerId]
+    );
+    
+    if (assignmentsResult.rows.length === 0) {
+      return res.json([]);
+    }
+    
+    const projectIds = assignmentsResult.rows.map(row => row.project_id);
+    
+    // Then get the full project details for these projects
+    const result = await pool.query(
+      `SELECT * FROM inquiries 
+       WHERE id = ANY($1::int[]) 
+       ORDER BY created_at DESC`,
+      [projectIds]
+    );
+    
+    // Get timeline data for all projects to calculate progress
+    const projects = await Promise.all(result.rows.map(async (row) => {
+      const timelineResult = await pool.query(
+        'SELECT * FROM project_timeline WHERE project_id = $1',
+        [row.id]
+      );
+      
+      const timelineItems = timelineResult.rows;
+      const totalTasks = timelineItems.length;
+      const completedTasks = timelineItems.filter(item => item.status === 'completed').length;
+      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      
+      return {
+        ...row,
+        progress,
+        timeline: timelineItems
+      };
+    }));
+    
+    res.json(projects);
+  } catch (error) {
+    console.error('Error fetching assigned projects:', error);
+    res.status(500).json({ message: 'Failed to fetch assigned projects' });
   }
 });
 

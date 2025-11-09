@@ -1,7 +1,70 @@
+export interface Developer {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  assigned_projects: number;
+}
+
 export async function fetchProjects() {
   const response = await fetch('/api/projects');
   if (!response.ok) throw new Error('Failed to fetch projects');
   return response.json();
+}
+
+export async function fetchDevelopers(): Promise<Developer[]> {
+  const response = await fetch('/api/developers', {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    }
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Failed to fetch developers');
+  }
+  
+  return response.json();
+}
+
+export async function assignProjectToDeveloper(developerId: number, projectId: number) {
+  const response = await fetch('/api/developers/assign', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+    },
+    body: JSON.stringify({ developerId, projectId })
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Failed to assign project');
+  }
+  
+  return response.json();
+}
+
+export async function fetchAssignedProjects(developerId: string) {
+  try {
+    const response = await fetch(`/api/projects/assigned/${developerId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to fetch assigned projects');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error in fetchAssignedProjects:', error);
+    throw error;
+  }
 }
 
 export async function fetchProjectById(id: string) {

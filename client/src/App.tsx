@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProjectProvider } from './context/ProjectContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -10,11 +10,26 @@ import { ProjectDetail } from './pages/ProjectDetails';
 import SentimentDashboard from './pages/SentimentDashboard';
 import Login from './pages/Login';
 import Unauthorized from './pages/Unauthorized';
+import DeveloperDashboard from './pages/DeveloperDashboard';
 
 // Components
 import { PrivateRoute } from './components/PrivateRoute';
 
 import './index.css';
+
+// Component to handle role-based dashboard routing
+const RoleBasedDashboard = () => {
+  const { user } = useAuth();
+  
+  if (user?.role === 'admin') {
+    return <Dashboard />;
+  } else if (user?.role === 'developer') {
+    return <DeveloperDashboard />;
+  }
+  
+  // Default fallback to unauthorized if role is not recognized
+  return <Navigate to="/unauthorized" />;
+};
 
 function App() {
   return (
@@ -33,7 +48,7 @@ function App() {
                 path="/dashboard" 
                 element={
                   <PrivateRoute>
-                    <Dashboard />
+                    <RoleBasedDashboard />
                   </PrivateRoute>
                 } 
               />

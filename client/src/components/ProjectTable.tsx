@@ -3,15 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { Project } from '../types/Project';
 import { StatusBadge } from './StatusBadge';
 import { ProgressBar } from './progressBar';
-import { Calendar, Mail, Phone, User, ArrowRight, Smile, Meh, Frown, Brain } from 'lucide-react';
+import { Calendar, Mail, Phone, User, ArrowRight, Smile, Meh, Frown, Brain, Trash2, Pencil } from 'lucide-react';
 import { sentimentApi } from '../utils/sentimentApi';
 import { ProjectSentiment } from '../types/Sentiment';
 
 interface ProjectTableProps {
   projects: Project[];
+  hideActions?: boolean;
+  onDelete?: (id: string) => void;
+  onEdit?: (project: Project) => void;
 }
 
-export const ProjectTable: React.FC<ProjectTableProps> = ({ projects }) => {
+export const ProjectTable: React.FC<ProjectTableProps> = ({ 
+  projects, 
+  hideActions = false, 
+  onDelete, 
+  onEdit 
+}) => {
   const navigate = useNavigate();
   const [sentimentData, setSentimentData] = useState<Record<string, ProjectSentiment>>({});
 
@@ -141,6 +149,30 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ projects }) => {
                   <div className="mt-3">
                     <ProgressBar progress={project.progress} size="sm" showPercentage={false} />
                   </div>
+                  {!hideActions && (
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete && onDelete(project.id);
+                        }}
+                        className="p-1 text-red-500 hover:text-red-700 transition-colors"
+                        title="Delete Project"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit && onEdit(project);
+                        }}
+                        className="p-1 text-blue-500 hover:text-blue-700 transition-colors"
+                        title="Edit Project"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-5 whitespace-nowrap">
                   <StatusBadge status={project.status} />
