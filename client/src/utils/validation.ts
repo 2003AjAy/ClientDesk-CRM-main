@@ -29,6 +29,21 @@ export const validateForm = (data: InquiryFormData): FormErrors => {
     errors.projectType = 'Please select a project type';
   }
 
+  // Budget validation
+  if (!data.budget) {
+    errors.budget = 'Please select a budget range';
+  }
+
+  // Timeline validation
+  if (!data.timeline) {
+    errors.timeline = 'Please select a timeline';
+  }
+
+  // Source validation
+  if (!data.source) {
+    errors.source = 'Please tell us how you heard about us';
+  }
+
   // Requirements validation
   if (!data.requirements.trim()) {
     errors.requirements = 'Project requirements are required';

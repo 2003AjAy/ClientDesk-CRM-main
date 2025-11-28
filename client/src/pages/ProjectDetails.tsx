@@ -5,12 +5,12 @@ import { ProgressBar } from '../components/progressBar';
 import { ProjectTimeline } from '../components/ProjectTimeline';
 import { ProjectNotes } from '../components/ProjectNotes';
 import RelationshipHealthCard from '../components/RelationshipHealthCard';
-import { 
-  fetchProjectById, 
-  fetchProjectNotes, 
-  addProjectNote, 
-  fetchProjectTimeline, 
-  addProjectTimelineItem, 
+import {
+  fetchProjectById,
+  fetchProjectNotes,
+  addProjectNote,
+  fetchProjectTimeline,
+  addProjectTimelineItem,
   updateProjectTimelineItem,
   updateProjectStatus
 } from '../utils/api';
@@ -29,7 +29,7 @@ export const ProjectDetail: React.FC = () => {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    
+
     const loadProjectData = async () => {
       try {
         const [projectData, notesData, timelineData] = await Promise.all([
@@ -37,7 +37,7 @@ export const ProjectDetail: React.FC = () => {
           fetchProjectNotes(id),
           fetchProjectTimeline(id)
         ]);
-        
+
         setProject(projectData);
         setNotes(notesData);
         setTimeline(timelineData);
@@ -76,16 +76,36 @@ export const ProjectDetail: React.FC = () => {
   const handleUpdateTask = async (taskId: string, status: 'completed' | 'current' | 'pending') => {
     if (!id) return;
     try {
-      const updatedTask = await updateProjectTimelineItem(id, taskId, status);
-      setTimeline(prevTimeline => 
-        prevTimeline.map(task => 
-          task.id === taskId ? { ...task, status: updatedTask.status } : task
-        )
-      );
-      
-      // Refresh project data to get updated progress
+      // 1. Update the specific task
+      await updateProjectTimelineItem(id, taskId, status);
+
+      // 2. Fetch the latest timeline to ensure we have the correct state for all tasks
+      const latestTimeline = await fetchProjectTimeline(id);
+      setTimeline(latestTimeline);
+
+      // 3. Calculate new status based on the latest timeline
+      const totalTasks = latestTimeline.length;
+      const completedTasks = latestTimeline.filter((t: ProjectTimelineItem) => t.status === 'completed').length;
+
+      let newProjectStatus = 'Pending';
+      if (totalTasks > 0) {
+        if (completedTasks === totalTasks) {
+          newProjectStatus = 'Completed';
+        } else if (completedTasks > 0) {
+          newProjectStatus = 'In Progress';
+        }
+      }
+
+      // 4. Update project status if it has changed
+      // We check against the current project status to avoid unnecessary API calls
+      if (project.status !== newProjectStatus) {
+        await updateProjectStatus(id, newProjectStatus);
+      }
+
+      // 5. Refresh project data to get updated progress and sync everything
       const updatedProject = await fetchProjectById(id);
       setProject(updatedProject);
+
     } catch (err) {
       console.error('Error updating task:', err);
       alert('Failed to update task. Please try again.');
@@ -96,7 +116,33 @@ export const ProjectDetail: React.FC = () => {
     if (!id) return;
     try {
       const newTask = await addProjectTimelineItem(id, title, description);
-      setTimeline(prevTimeline => [...prevTimeline, newTask]);
+
+      // Update local timeline
+      const newTimeline = [...timeline, newTask];
+      setTimeline(newTimeline);
+
+      // Calculate new status
+      const totalTasks = newTimeline.length;
+      const completedTasks = newTimeline.filter(t => t.status === 'completed').length;
+
+      let newProjectStatus = 'Pending';
+      if (totalTasks > 0) {
+        if (completedTasks === totalTasks) {
+          newProjectStatus = 'Completed';
+        } else if (completedTasks > 0) {
+          newProjectStatus = 'In Progress';
+        }
+      }
+
+      // Update project status if changed
+      if (project.status !== newProjectStatus) {
+        await updateProjectStatus(id, newProjectStatus);
+      }
+
+      // Refresh project data
+      const updatedProject = await fetchProjectById(id);
+      setProject(updatedProject);
+
     } catch (err) {
       console.error('Error adding task:', err);
       alert('Failed to add task. Please try again.');
@@ -214,13 +260,46 @@ export const ProjectDetail: React.FC = () => {
                     Project Details
                   </h3>
                   <div className="space-y-6">
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">Project Type</label>
-                      <p className="text-sm text-gray-900 font-medium">{project.projectType}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Project Type</label>
+                        <p className="text-sm text-gray-900 font-medium">{project.projectType}</p>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Company</label>
+                        <p className="text-sm text-gray-900 font-medium">{project.company || 'N/A'}</p>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Budget Range</label>
+                        <p className="text-sm text-gray-900 font-medium">{project.budget || 'N/A'}</p>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Timeline</label>
+                        <p className="text-sm text-gray-900 font-medium">{project.timelineRange || project.timeline || 'N/A'}</p>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Source</label>
+                        <p className="text-sm text-gray-900 font-medium capitalize">{project.source || 'N/A'}</p>
+                      </div>
                     </div>
+
+                    {project.targetAudience && (
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Target Audience</label>
+                        <p className="text-sm text-gray-900 leading-relaxed">{project.targetAudience}</p>
+                      </div>
+                    )}
+
+                    {project.keyFeatures && (
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Key Features Required</label>
+                        <p className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">{project.keyFeatures}</p>
+                      </div>
+                    )}
+
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Requirements</label>
-                      <p className="text-sm text-gray-900 leading-relaxed">{project.requirements}</p>
+                      <p className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap">{project.requirements}</p>
                     </div>
                   </div>
                 </div>
@@ -236,9 +315,9 @@ export const ProjectDetail: React.FC = () => {
                 </div>
               </div>
               <div className="px-6 py-8">
-                <RelationshipHealthCard 
-                  projectId={id || ''} 
-                  clientName={project?.clientName || 'Unknown Client'} 
+                <RelationshipHealthCard
+                  projectId={id || ''}
+                  clientName={project?.clientName || 'Unknown Client'}
                 />
               </div>
             </div>
@@ -257,9 +336,9 @@ export const ProjectDetail: React.FC = () => {
               <div className="px-6 py-8">
                 <div className="mb-6">
                   <h4 className="text-sm font-semibold text-gray-700 mb-4">Progress Overview</h4>
-                  <ProjectTimeline 
-                    timeline={timeline} 
-                    orientation="horizontal" 
+                  <ProjectTimeline
+                    timeline={timeline}
+                    orientation="horizontal"
                     editable={true}
                     onUpdateTask={handleUpdateTask}
                     onAddTask={handleAddTask}
@@ -267,9 +346,9 @@ export const ProjectDetail: React.FC = () => {
                 </div>
                 <div className="border-t border-gray-200 pt-6">
                   <h4 className="text-sm font-semibold text-gray-700 mb-4">Detailed Timeline</h4>
-                  <ProjectTimeline 
-                    timeline={timeline} 
-                    orientation="vertical" 
+                  <ProjectTimeline
+                    timeline={timeline}
+                    orientation="vertical"
                     editable={true}
                     onUpdateTask={handleUpdateTask}
                     onAddTask={handleAddTask}
@@ -296,7 +375,7 @@ export const ProjectDetail: React.FC = () => {
                     </label>
                     <StatusBadge status={project.status} />
                   </div>
-                  
+
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                     <label htmlFor="status-select" className="block text-sm font-semibold text-gray-700 mb-3">
                       Update Status

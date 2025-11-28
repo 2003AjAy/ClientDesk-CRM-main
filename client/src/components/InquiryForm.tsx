@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Send, User, Mail, Phone, Briefcase, FileText, Calendar } from 'lucide-react';
-import { InquiryFormData, FormErrors, PROJECT_TYPES } from '../types';
+import { InquiryFormData, FormErrors, PROJECT_TYPES, BUDGET_RANGES, TIMELINE_RANGES, REFERRAL_SOURCES } from '../types';
 import { validateForm, isValidForm } from '../utils/validation';
 
 interface InquiryFormProps {
@@ -13,7 +13,13 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
     name: '',
     email: '',
     phone: '',
+    company: '',
     projectType: '',
+    budget: '',
+    timeline: '',
+    source: '',
+    targetAudience: '',
+    keyFeatures: '',
     requirements: '',
     date: new Date().toISOString().split('T')[0]
   });
@@ -26,7 +32,7 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error when user starts typing
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
@@ -35,11 +41,11 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationErrors = validateForm(formData);
     setErrors(validationErrors);
     setSubmitError(null);
-    
+
     if (!isValidForm(validationErrors)) {
       return;
     }
@@ -57,7 +63,7 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
       setSubmitError('Submission failed. Please try again.');
     }
     setIsSubmitting(false);
-    
+
     // Reset form after 3 seconds
     setTimeout(() => {
       setIsSubmitted(false);
@@ -65,7 +71,13 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
         name: '',
         email: '',
         phone: '',
+        company: '',
         projectType: '',
+        budget: '',
+        timeline: '',
+        source: '',
+        targetAudience: '',
+        keyFeatures: '',
         requirements: '',
         date: new Date().toISOString().split('T')[0]
       });
@@ -86,11 +98,11 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       />
-      
+
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
@@ -135,9 +147,8 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter your full name"
                 />
                 {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
@@ -155,9 +166,8 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="your@email.com"
                 />
                 {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
@@ -175,18 +185,34 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                    errors.phone ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.phone ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="+1 (555) 123-4567"
                 />
                 {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
               </div>
 
+              {/* Company Field */}
+              <div>
+                <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+                  <Briefcase className="w-4 h-4 inline mr-1" />
+                  Company Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  id="company"
+                  name="company"
+                  value={formData.company}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Your Company Ltd."
+                />
+              </div>
+
               {/* Project Type Field */}
               <div>
                 <label htmlFor="projectType" className="block text-sm font-medium text-gray-700 mb-2">
-                  <Briefcase className="w-4 h-4 inline mr-1" />
+                  <FileText className="w-4 h-4 inline mr-1" />
                   Project Type
                 </label>
                 <select
@@ -194,9 +220,8 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
                   name="projectType"
                   value={formData.projectType}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                    errors.projectType ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.projectType ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 >
                   {PROJECT_TYPES.map(type => (
                     <option key={type.value} value={type.value}>
@@ -206,6 +231,109 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
                 </select>
                 {errors.projectType && <p className="text-red-500 text-sm mt-1">{errors.projectType}</p>}
               </div>
+
+              {/* Budget Field */}
+              <div>
+                <label htmlFor="budget" className="block text-sm font-medium text-gray-700 mb-2">
+                  <span className="font-bold text-gray-500 mr-1">$</span>
+                  Budget Range
+                </label>
+                <select
+                  id="budget"
+                  name="budget"
+                  value={formData.budget}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.budget ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                >
+                  {BUDGET_RANGES.map(range => (
+                    <option key={range.value} value={range.value}>
+                      {range.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.budget && <p className="text-red-500 text-sm mt-1">{errors.budget}</p>}
+              </div>
+
+              {/* Timeline Field */}
+              <div>
+                <label htmlFor="timeline" className="block text-sm font-medium text-gray-700 mb-2">
+                  <Calendar className="w-4 h-4 inline mr-1" />
+                  Timeline
+                </label>
+                <select
+                  id="timeline"
+                  name="timeline"
+                  value={formData.timeline}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.timeline ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                >
+                  {TIMELINE_RANGES.map(range => (
+                    <option key={range.value} value={range.value}>
+                      {range.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.timeline && <p className="text-red-500 text-sm mt-1">{errors.timeline}</p>}
+              </div>
+
+              {/* Source Field */}
+              <div>
+                <label htmlFor="source" className="block text-sm font-medium text-gray-700 mb-2">
+                  <User className="w-4 h-4 inline mr-1" />
+                  How did you hear about us?
+                </label>
+                <select
+                  id="source"
+                  name="source"
+                  value={formData.source}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.source ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                >
+                  {REFERRAL_SOURCES.map(source => (
+                    <option key={source.value} value={source.value}>
+                      {source.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.source && <p className="text-red-500 text-sm mt-1">{errors.source}</p>}
+              </div>
+
+              {/* Target Audience Field */}
+              <div>
+                <label htmlFor="targetAudience" className="block text-sm font-medium text-gray-700 mb-2">
+                  <User className="w-4 h-4 inline mr-1" />
+                  Target Audience (Optional)
+                </label>
+                <input
+                  type="text"
+                  id="targetAudience"
+                  name="targetAudience"
+                  value={formData.targetAudience}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="e.g., Small Business Owners, Students"
+                />
+              </div>
+            </div>
+
+            {/* Key Features Field */}
+            <div>
+              <label htmlFor="keyFeatures" className="block text-sm font-medium text-gray-700 mb-2">
+                <FileText className="w-4 h-4 inline mr-1" />
+                Key Features Required
+              </label>
+              <textarea
+                id="keyFeatures"
+                name="keyFeatures"
+                value={formData.keyFeatures}
+                onChange={handleInputChange}
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                placeholder="List the most important features you need..."
+              />
             </div>
 
             {/* Date Field */}
@@ -237,9 +365,8 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
                 value={formData.requirements}
                 onChange={handleInputChange}
                 rows={4}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none ${
-                  errors.requirements ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none ${errors.requirements ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 placeholder="Please describe your project requirements, goals, and any specific features you need..."
               />
               {errors.requirements && <p className="text-red-500 text-sm mt-1">{errors.requirements}</p>}
@@ -249,11 +376,10 @@ const InquiryForm: React.FC<InquiryFormProps> = ({ isOpen, onClose }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`w-full py-4 px-6 rounded-lg font-semibold text-white transition-all duration-200 flex items-center justify-center ${
-                isSubmitting
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg transform hover:scale-[1.02]'
-              }`}
+              className={`w-full py-4 px-6 rounded-lg font-semibold text-white transition-all duration-200 flex items-center justify-center ${isSubmitting
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg transform hover:scale-[1.02]'
+                }`}
             >
               {isSubmitting ? (
                 <>

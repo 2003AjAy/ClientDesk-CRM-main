@@ -22,11 +22,11 @@ app.use('/api/users', usersRouter);
 
 // Placeholder endpoint for form submissions
 app.post('/api/submit', async (req, res) => {
-  const { name, email, phone, projectType, requirements, date } = req.body;
+  const { name, email, phone, company, projectType, budget, timeline, source, targetAudience, keyFeatures, requirements, date } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO inquiries (name, email, phone, project_type, requirements, date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [name, email, phone, projectType, requirements, date]
+      'INSERT INTO inquiries (name, email, phone, company, project_type, budget, timeline, source, target_audience, key_features, requirements, date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+      [name, email, phone, company, projectType, budget, timeline, source, targetAudience, keyFeatures, requirements, date]
     );
     res.status(201).json({ message: 'Inquiry submitted successfully', inquiry: result.rows[0] });
   } catch (error) {
@@ -38,7 +38,7 @@ app.post('/api/submit', async (req, res) => {
 // Fetch projects assigned to a specific developer
 app.get('/api/projects/assigned/:developerId', async (req, res) => {
   const { developerId } = req.params;
-  
+
   try {
     // First, check if the project_assignments table exists
     const tableExists = await pool.query(
@@ -59,13 +59,13 @@ app.get('/api/projects/assigned/:developerId', async (req, res) => {
       'SELECT project_id FROM project_assignments WHERE developer_id = $1',
       [developerId]
     );
-    
+
     if (assignmentsResult.rows.length === 0) {
       return res.json([]);
     }
-    
+
     const projectIds = assignmentsResult.rows.map(row => row.project_id);
-    
+
     // Then get the full project details for these projects
     const result = await pool.query(
       `SELECT * FROM inquiries 
@@ -91,7 +91,14 @@ app.get('/api/projects/assigned/:developerId', async (req, res) => {
         clientName: row.name,
         email: row.email,
         phone: row.phone,
+        company: row.company,
         projectType: row.project_type,
+        budget: row.budget,
+        timeline: row.timeline_range || row.timeline, // Handle both naming conventions if needed, or just map 'timeline' column
+        source: row.source,
+        targetAudience: row.target_audience,
+
+        keyFeatures: row.key_features,
         requirements: row.requirements,
         status: row.status || 'Pending',
         createdAt: row.date,
@@ -112,7 +119,7 @@ app.get('/api/projects/assigned/:developerId', async (req, res) => {
 app.get('/api/projects', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM inquiries ORDER BY date DESC');
-    
+
     // Get timeline data for all projects to calculate progress
     const projects = await Promise.all(result.rows.map(async (row) => {
       // Get timeline items for this project
@@ -120,20 +127,27 @@ app.get('/api/projects', async (req, res) => {
         'SELECT * FROM project_timeline WHERE project_id = $1',
         [row.id]
       );
-      
+
       const timelineItems = timelineResult.rows;
       const totalTasks = timelineItems.length;
       const completedTasks = timelineItems.filter(item => item.status === 'completed').length;
-      
+
       // Calculate progress percentage
       const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-      
+
       return {
         id: row.id.toString(),
         clientName: row.name,
         email: row.email,
         phone: row.phone,
+        company: row.company,
         projectType: row.project_type,
+        budget: row.budget,
+        timeline: row.timeline_range || row.timeline,
+        source: row.source,
+        targetAudience: row.target_audience,
+
+        keyFeatures: row.key_features,
         requirements: row.requirements,
         status: row.status || 'Pending',
         createdAt: row.date,
@@ -142,7 +156,7 @@ app.get('/api/projects', async (req, res) => {
         notes: [],
       };
     }));
-    
+
     res.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);
@@ -159,26 +173,32 @@ app.get('/api/projects/:id', async (req, res) => {
       return res.status(404).json({ message: 'Project not found' });
     }
     const row = result.rows[0];
-    
+
     // Get timeline items for this project to calculate progress
     const timelineResult = await pool.query(
       'SELECT * FROM project_timeline WHERE project_id = $1',
       [id]
     );
-    
+
     const timelineItems = timelineResult.rows;
     const totalTasks = timelineItems.length;
     const completedTasks = timelineItems.filter(item => item.status === 'completed').length;
-    
+
     // Calculate progress percentage
     const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
+
     const project = {
       id: row.id.toString(),
       clientName: row.name,
       email: row.email,
       phone: row.phone,
+      company: row.company,
       projectType: row.project_type,
+      budget: row.budget,
+      timeline: row.timeline_range || row.timeline,
+      source: row.source,
+      targetAudience: row.target_audience,
+      keyFeatures: row.key_features,
       requirements: row.requirements,
       status: row.status || 'Pending',
       createdAt: row.date,
@@ -277,24 +297,24 @@ app.put('/api/projects/:id/timeline/:taskId', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Timeline item not found' });
     }
-    
+
     // Recalculate and update project progress
     const timelineResult = await pool.query(
       'SELECT * FROM project_timeline WHERE project_id = $1',
       [id]
     );
-    
+
     const timelineItems = timelineResult.rows;
     const totalTasks = timelineItems.length;
     const completedTasks = timelineItems.filter(item => item.status === 'completed').length;
     const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
+
     // Update the project's progress in the database
     await pool.query(
       'UPDATE inquiries SET progress = $1 WHERE id = $2',
       [progress, id]
     );
-    
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating project timeline item:', error);
@@ -326,33 +346,33 @@ app.put('/api/projects/:id/status', async (req, res) => {
 // Fallback sentiment analysis function (rule-based)
 function analyzeSentimentFallback(text) {
   const lowerText = text.toLowerCase();
-  
+
   // Positive indicators
   const positiveWords = [
-    'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'love', 'happy', 
-    'satisfied', 'pleased', 'impressed', 'thank', 'appreciate', 'perfect', 
+    'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'love', 'happy',
+    'satisfied', 'pleased', 'impressed', 'thank', 'appreciate', 'perfect',
     'good', 'nice', 'awesome', 'brilliant', 'outstanding', 'superb'
   ];
-  
+
   // Negative indicators
   const negativeWords = [
-    'bad', 'terrible', 'awful', 'horrible', 'hate', 'angry', 'frustrated', 
-    'disappointed', 'upset', 'concerned', 'worried', 'problem', 'issue', 
+    'bad', 'terrible', 'awful', 'horrible', 'hate', 'angry', 'frustrated',
+    'disappointed', 'upset', 'concerned', 'worried', 'problem', 'issue',
     'wrong', 'failed', 'broken', 'unhappy', 'dissatisfied', 'complaint'
   ];
-  
+
   // Count positive and negative words
   let positiveCount = 0;
   let negativeCount = 0;
-  
+
   positiveWords.forEach(word => {
     if (lowerText.includes(word)) positiveCount++;
   });
-  
+
   negativeWords.forEach(word => {
     if (lowerText.includes(word)) negativeCount++;
   });
-  
+
   // Determine sentiment based on word counts
   if (positiveCount > negativeCount && positiveCount > 0) {
     return 'positive';
@@ -366,7 +386,7 @@ function analyzeSentimentFallback(text) {
 // Analyze project sentiment using Hugging Face API
 app.post('/api/ai/sentiment', async (req, res) => {
   const { projectId, clientName, messages } = req.body;
-  
+
   try {
     if (!projectId || !clientName || !messages || !Array.isArray(messages)) {
       return res.status(400).json({ message: 'projectId, clientName and messages array are required' });
@@ -403,7 +423,7 @@ app.post('/api/ai/sentiment', async (req, res) => {
         );
 
         sentimentData = huggingFaceResponse.data[0];
-        
+
         // Map Hugging Face labels to our sentiment labels (5-star rating system)
         const labelMapping = {
           'LABEL_1': 'negative', // 1 star - very negative
@@ -412,10 +432,10 @@ app.post('/api/ai/sentiment', async (req, res) => {
           'LABEL_4': 'positive', // 4 stars - positive
           'LABEL_5': 'positive'  // 5 stars - very positive
         };
-        
+
         sentimentLabel = labelMapping[sentimentData.label] || 'neutral';
         confidenceScore = sentimentData.score;
-        
+
         console.log('Hugging Face Analysis:', {
           text: combinedText.substring(0, 100) + '...',
           label: sentimentData.label,
@@ -436,7 +456,7 @@ app.post('/api/ai/sentiment', async (req, res) => {
       confidenceScore = 0.85; // High confidence for fallback
       analysisMethod = 'fallback';
     }
-    
+
     // Calculate relationship health score (0-100)
     let relationshipHealthScore;
     if (sentimentLabel === 'positive') {
@@ -446,7 +466,7 @@ app.post('/api/ai/sentiment', async (req, res) => {
     } else { // negative
       relationshipHealthScore = Math.round(confidenceScore * 49);
     }
-    
+
     // Generate AI summary based on sentiment
     let summary;
     if (sentimentLabel === 'positive') {
@@ -500,7 +520,7 @@ app.post('/api/ai/sentiment', async (req, res) => {
     );
 
     const sentimentRecord = result.rows[0];
-    
+
     res.json({
       projectId: sentimentRecord.project_id,
       clientName: sentimentRecord.client_name,
@@ -519,12 +539,12 @@ app.post('/api/ai/sentiment', async (req, res) => {
 
   } catch (error) {
     console.error('Error analyzing sentiment:', error);
-    
+
     // If Hugging Face API fails, return a fallback response
     if (error.response?.status === 503) {
-      res.status(503).json({ 
+      res.status(503).json({
         message: 'AI sentiment analysis service temporarily unavailable',
-        fallback: true 
+        fallback: true
       });
     } else {
       res.status(500).json({ message: 'Failed to analyze sentiment' });
@@ -537,25 +557,25 @@ app.post('/api/ai/sentiment/generate-all', async (req, res) => {
   try {
     // Get all projects
     const projectsResult = await pool.query('SELECT * FROM inquiries ORDER BY date DESC');
-    
+
     const results = [];
-    
+
     for (const project of projectsResult.rows) {
       // Check if sentiment data already exists
       const existingSentiment = await pool.query(
         'SELECT * FROM project_sentiment WHERE project_id = $1',
         [project.id.toString()]
       );
-      
+
       if (existingSentiment.rows.length === 0) {
         // Generate sample messages based on project status and requirements
         const sampleMessages = generateSampleMessages(project);
-        
+
         // Analyze sentiment
         const combinedText = sampleMessages.join(' ');
         const sentimentLabel = analyzeSentimentFallback(combinedText);
         const confidenceScore = 0.75;
-        
+
         // Calculate health score
         let relationshipHealthScore;
         if (sentimentLabel === 'positive') {
@@ -565,7 +585,7 @@ app.post('/api/ai/sentiment/generate-all', async (req, res) => {
         } else {
           relationshipHealthScore = Math.round(confidenceScore * 49);
         }
-        
+
         // Generate summary
         let summary;
         if (sentimentLabel === 'positive') {
@@ -575,7 +595,7 @@ app.post('/api/ai/sentiment/generate-all', async (req, res) => {
         } else {
           summary = `Client communication indicates concerns about the ${project.project_type} project. Attention may be needed.`;
         }
-        
+
         // Insert sentiment data
         await pool.query(
           `INSERT INTO project_sentiment 
@@ -593,7 +613,7 @@ app.post('/api/ai/sentiment/generate-all', async (req, res) => {
             combinedText
           ]
         );
-        
+
         results.push({
           projectId: project.id.toString(),
           clientName: project.name,
@@ -610,14 +630,14 @@ app.post('/api/ai/sentiment/generate-all', async (req, res) => {
         });
       }
     }
-    
+
     res.json({
       message: 'Sentiment analysis generation completed',
       results: results,
       totalProjects: projectsResult.rows.length,
       generatedCount: results.filter(r => r.generated).length
     });
-    
+
   } catch (error) {
     console.error('Error generating sentiment analysis:', error);
     res.status(500).json({ message: 'Failed to generate sentiment analysis' });
@@ -627,15 +647,15 @@ app.post('/api/ai/sentiment/generate-all', async (req, res) => {
 // Helper function to generate sample messages based on project data
 function generateSampleMessages(project) {
   const messages = [];
-  
+
   // Add project type as context
   messages.push(`Project type: ${project.project_type}`);
-  
+
   // Add requirements context
   if (project.requirements) {
     messages.push(`Requirements: ${project.requirements.substring(0, 200)}`);
   }
-  
+
   // Add status-based context
   switch (project.status) {
     case 'Pending':
@@ -650,17 +670,17 @@ function generateSampleMessages(project) {
     default:
       messages.push('Project status is being managed');
   }
-  
+
   // Add some generic positive context for most projects
   messages.push('Client is working with our team on this project');
-  
+
   return messages;
 }
 
 // Get project sentiment data
 app.get('/api/ai/sentiment/:projectId', async (req, res) => {
   const { projectId } = req.params;
-  
+
   try {
     const result = await pool.query(
       'SELECT * FROM project_sentiment WHERE project_id = $1',
@@ -701,7 +721,7 @@ app.get('/api/ai/sentiment/:projectId', async (req, res) => {
 // User signup
 app.post('/api/auth/signup', async (req, res) => {
   const { name, email, password, role } = req.body;
-  
+
   try {
     // Check if user already exists
     const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -720,7 +740,7 @@ app.post('/api/auth/signup', async (req, res) => {
     );
 
     const user = result.rows[0];
-    
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
@@ -747,7 +767,7 @@ app.post('/api/auth/signup', async (req, res) => {
 // User login
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  
+
   try {
     // Find user by email
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -756,7 +776,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = result.rows[0];
-    
+
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {

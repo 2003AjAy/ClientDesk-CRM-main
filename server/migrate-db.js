@@ -10,7 +10,13 @@ async function migrateDatabase() {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL,
         phone VARCHAR(50),
+        company VARCHAR(255),
         project_type VARCHAR(255) NOT NULL,
+        budget VARCHAR(100),
+        timeline VARCHAR(100),
+        source VARCHAR(100),
+        target_audience TEXT,
+        key_features TEXT,
         requirements TEXT,
         date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         status VARCHAR(50) DEFAULT 'Pending'
